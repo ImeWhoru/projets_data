@@ -1,4 +1,4 @@
 Idées:
 
-	* Faire un "Qui est-ce ?"
+	* Faire un "Qui est-ce ?" => Assistants ont dit que c'était une super idée, mais que ça sortait un peu du contexte du projet. Par contre, mettre un 'score' (comme au Qui-est-ce justement) aux features en fonction de leur qualité (= combien de personnes elles permettraient d'éliminer au Qui-est-ce) est une super idée
 	* 
