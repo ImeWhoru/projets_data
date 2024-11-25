@@ -2,3 +2,17 @@ Idées:
 
 	* Faire un "Qui est-ce ?" => Assistants ont dit que c'était une super idée, mais que ça sortait un peu du contexte du projet. Par contre, mettre un 'score' (comme au Qui-est-ce justement) aux features en fonction de leur qualité (= combien de personnes elles permettraient d'éliminer au Qui-est-ce) est une super idée
 	* Voir mutual information et entropie à la place de correlation
+	* Faire un truc interactif en mode CTRL+Z pour revenir en arrière
+
+
+
+Aurian TODO:
+	* Changer le mode de filtre de charactéristiques
+	* Changer le design de la selection d'algorythme (un slider disponible sur toutes les pages)
+	* Ajouter un tracker du nombre de photos correspondant à la sélection de caractéristiques
+	* Resize photos pour optimiser le boot des photos dans le serveur
+	* Faire une grille de 2 x 5 photos et pas 3 x 4
+	* Faire de la grille un grille statique et pas dynamique
+	* Replace previous/next buttons by arrows for the pictures
+	* Add previous/next button to navigate through pages
+	* 
