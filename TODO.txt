@@ -8,11 +8,10 @@ Idées:
 
 Aurian TODO:
 	* Changer le mode de filtre de charactéristiques
-	* Changer le design de la selection d'algorythme (un slider disponible sur toutes les pages)
 	* Ajouter un tracker du nombre de photos correspondant à la sélection de caractéristiques
 	* Resize photos pour optimiser le boot des photos dans le serveur
 	* Faire une grille de 2 x 5 photos et pas 3 x 4
 	* Faire de la grille un grille statique et pas dynamique
 	* Replace previous/next buttons by arrows for the pictures
 	* Add previous/next button to navigate through pages
-	* 
+	* Le choix de theme n'est pas généralisé. Quand je change de page, le theme se reset.

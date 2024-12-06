@@ -27,7 +27,7 @@ df_s_pg1 = df_s.iloc[:, :40].dropna()
 df_l_pg1 = df_l.iloc[:, :40].dropna()
 
 ###################################################
-##### BUILD THE DASH APP                        ####
+##### BUILD THE DASH APP                       ####
 ###################################################
 
 # Initialize Dash app
@@ -37,49 +37,35 @@ app = Dash(__name__)
 app.layout = html.Div([
     html.H1("Data Visualization with Dash", style={'textAlign': 'center'}),
 
-    # Toggle-style dataset selector
+    # Slider-style dataset selector
     html.Div([
-        dcc.RadioItems(
-            id='dataset-selector',
-            options=[
-                {'label': 'Small', 'value': 'small'},
-                {'label': 'Large', 'value': 'large'}
-            ],
-            value='small',  # Default value
-            style={'display': 'none'}  # Hide default RadioItems
-        ),
-        html.Div(
-            id="custom-toggle",
-            style={
-                'display': 'inline-block',
-                'border': '1px solid black',
-                'border-radius': '25px',
-                'overflow': 'hidden',
-                'width': '200px',
-                'cursor': 'pointer',
-                'margin': '20px auto',
-                'textAlign': 'center'
+        html.Label("Dataset Selector", style={
+            'textAlign': 'center', 
+            'font-weight': 'bold', 
+            'margin-bottom': '10px'
+        }),
+        dcc.Slider(
+            id='dataset-slider',
+            min=0,
+            max=1,
+            marks={
+                0: {'label': 'Small', 'style': {'color': 'green', 'font-weight': 'bold'}},
+                1: {'label': 'Large', 'style': {'color': 'red', 'font-weight': 'bold'}}
             },
-            children=[
-                html.Div("Small", id="small-btn", style={
-                    'width': '50%',
-                    'display': 'inline-block',
-                    'padding': '10px',
-                    'color': 'white',
-                    'background-color': 'green',
-                    'cursor': 'pointer'
-                }),
-                html.Div("Large", id="large-btn", style={
-                    'width': '50%',
-                    'display': 'inline-block',
-                    'padding': '10px',
-                    'color': 'white',
-                    'background-color': 'red',
-                    'cursor': 'pointer'
-                }),
-            ]
+            value=0,  # Default to 'Small'
+            tooltip={"placement": "bottom", "always_visible": True},
+            updatemode='drag'  # Updates as you drag
         )
-    ], style={'textAlign': 'center'}),
+    ], style={
+        'width': '50%', 
+        'margin': '20px auto', 
+        'padding': '20px', 
+        'border': '2px solid black', 
+        'border-radius': '15px', 
+        'box-shadow': '0 4px 8px rgba(0, 0, 0, 0.2)', 
+        'background-color': '#f9f9f9', 
+        'textAlign': 'center'
+    }),
 
     # Characteristics Dropdown and Image Grid
     html.Div([
@@ -143,16 +129,10 @@ def update_toggle(dataset):
 
 @app.callback(
     Output('dataset-selector', 'value'),
-    [Input('small-btn', 'n_clicks'),
-     Input('large-btn', 'n_clicks')],
-    prevent_initial_call=True
+    Input('dataset-slider', 'value')
 )
-def handle_toggle(small_clicks, large_clicks):
-    ctx = Dash.callback_context
-    if not ctx.triggered:
-        return Dash.no_update
-    clicked_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    return 'small' if clicked_id == 'small-btn' else 'large'
+def handle_slider_toggle(slider_value):
+    return 'small' if slider_value == 0 else 'large'
 
 
 # Populate characteristics based on dataset
@@ -193,7 +173,7 @@ def update_visualization(dataset, characteristics, filter_mode, prev_clicks, nex
 
 
 ###################################################
-##### RUN THE APP                              #####
+##### RUN THE APP                             #####
 ###################################################
 
 if __name__ == '__main__':
