@@ -108,6 +108,29 @@ app.layout = html.Div([
 ])
 
 ###################################################
+##### Page 2                                  #####
+###################################################
+
+from sklearn.manifold import TSNE
+
+@app.callback(
+    Output('tsne-plot', 'figure'),
+    [Input('dataset-selector', 'value')]
+)
+def tsne_dimension_reduction(dataset):
+    df = df_s_pg1 if dataset == 'small' else df_l_pg1
+    tsne = TSNE(n_components=2, random_state=42)
+    tsne_results = tsne.fit_transform(df.iloc[:, 1:])  # Assuming first column is not a feature
+    
+    fig = px.scatter(
+        x=tsne_results[:, 0],
+        y=tsne_results[:, 1],
+        labels={'x': 'TSNE-1', 'y': 'TSNE-2'},
+        title='t-SNE Dimension Reduction'
+    )
+    return fig
+
+###################################################
 ##### CALLBACKS FOR INTERACTIVITY             #####
 ###################################################
 
