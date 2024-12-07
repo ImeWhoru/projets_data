@@ -18,7 +18,6 @@ Aurian TODO:
 	* 
 
 Pirot TODO: 
-	* implementer kmeans, clustering hierarchique, dbscan
 	* implementer reduction de dimension linéaire et non-linéaire
 	* Répondre à ces questions dans le rapport: Clustering : What can you use clusters for? How will you show them in your interface? Can you use cross-filtering with a hierachical clustering? How does changing the parameters of the algorithms change the clustering?
 	* Répondre à ces questions dans le rapport: Dimensionality reduction : Can a clustering algorithm help you in choosing an effective DR algorithm? Do you detect visual clusters when you visualize a DR algorithm? What parameter should you choose and which should you enable the user to change?
