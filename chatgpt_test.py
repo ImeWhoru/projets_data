@@ -121,7 +121,7 @@ def process_file(load_s_clicks, load_l_clicks, clustering_method, recalculate_cl
 
             # Apply the selected clustering method
             if clustering_method == 'dbscan':
-                cluster_model = DBSCAN(eps=10, min_samples=10)  # Tune parameters as needed
+                cluster_model = DBSCAN(eps=5, min_samples=10)  # Tune parameters as needed
             elif clustering_method == 'kmeans':
                 cluster_model = KMeans(n_clusters=5, random_state=42)  # Adjust number of clusters
             elif clustering_method == 'hierarchical':
