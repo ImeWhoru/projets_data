@@ -1,4 +1,3 @@
-celeba_buffalo_l.csv
-celeba_buffalo_s.csv
+*.csv
 *.jpg
 celeba/celeba_buffalo_s_kmeans_results.csv
