@@ -1,177 +1,123 @@
-###################################################
-##### IMPORTS AND FILES LOCATION              #####
-###################################################
-
-import pandas as pd
-import os
-from dash import Dash, html, dcc, Input, Output
-
-# Define paths
-pathtocsv = 'celeba/'
-image_folder = 'project_code/assets/img_celeba/'
-
-# Safely load CSV files
-csv_s = pathtocsv + 'celeba_buffalo_s.csv'
-csv_l = pathtocsv + 'celeba_buffalo_l.csv'
-
-try:
-    df_s = pd.read_csv(csv_s, engine='python', encoding='utf-8')  # InsightFace small
-    df_l = pd.read_csv(csv_l, engine='python', encoding='utf-8')  # InsightFace large
-except Exception as e:
-    print(f"Error reading CSV files: \n{e}")
-    exit()
+# workout.py
 
 ###################################################
-##### GLOBAL VARIABLES                        #####
+##### IMPORTS AND FILES LOCATION + LOAD DATA  #####
 ###################################################
 
-# Global variables to store theme and dataset state
-global_theme = "light"  # Default theme
-global_dataset = "small"  # Default dataset
+from dash import Dash, html, dcc, Input, Output, State
+from dash.exceptions import PreventUpdate
+
+from functions import show_sidebar, get_theme_styles
+from data_loader import load_datasets
+from pages.page1 import render_page_1, register_page_1_callbacks
+from pages.page2 import render_page_2
+
+df_s_pg1, df_l_pg1 = load_datasets()
 
 ###################################################
-##### BUILD THE DASH APP                       #####
+##### INITIALIZE DASH APP                     #####
 ###################################################
-
 # Initialize Dash app
 app = Dash(__name__, suppress_callback_exceptions=True)
 
+# Initial state for the app layout
+initial_sidebar_style, initial_content_style, _, initial_sidebar_content = show_sidebar(
+    sidebar_state='expanded', theme='light', dataset='small'
+)
+
 app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
+    dcc.Store(id='theme-store', data='light'),  # Default theme is light
+    dcc.Store(id='dataset-store', data='small'),  # Default dataset
+    dcc.Store(id='sidebar-state', data='expanded'),  # Sidebar is initially expanded
 
-    # Sidebar for toggles
+    # Sidebar container
     html.Div([
-        html.H2("Settings", style={'textAlign': 'center', 'margin-bottom': '20px'}),
+        html.Button("☰", id="toggle-button", style={
+            'background-color': 'transparent',
+            'border': 'none',
+            'color': 'blue',
+            'font-size': '24px',
+            'cursor': 'pointer',
+            'margin-bottom': '20px'
+        }),
+        html.Div(id='sidebar-content', children=initial_sidebar_content)
+    ], id='sidebar', style=initial_sidebar_style),
 
-        # Theme Toggle
-        html.Label("Theme Selector", style={'font-weight': 'bold'}),
-        dcc.RadioItems(
-            id='theme-toggle',
-            options=[
-                {'label': 'Light Mode', 'value': 'light'},
-                {'label': 'Dark Mode', 'value': 'dark'}
-            ],
-            value='light',  # Default to Light Mode
-            style={'margin-bottom': '20px'}
-        ),
+    # Main content container
+    html.Div(id='page-content', style=initial_content_style),
 
-        # Dataset Toggle
-        html.Label("Dataset Selector", style={'font-weight': 'bold'}),
-        dcc.RadioItems(
-            id='dataset-selector',
-            options=[
-                {'label': 'Small Dataset', 'value': 'small'},
-                {'label': 'Large Dataset', 'value': 'large'}
-            ],
-            value='small',  # Default to Small Dataset
-        ),
-
-        # Navigation Links
-        html.Hr(),
-        html.A("Page 1", href="/page-1", style={'display': 'block', 'margin-top': '10px'}),
-        html.A("Page 2", href="/page-2", style={'display': 'block', 'margin-top': '10px'})
-    ], style={
-        'width': '10%', 
-        'position': 'fixed', 
-        'height': '100%', 
-        'padding': '20px', 
-        'background-color': '#f4f4f4', 
-        'box-shadow': '2px 0px 5px rgba(0,0,0,0.1)'
-    }),
-
-    # Main content area
-    html.Div(id='page-content', style={
-        'margin-left': '12%', 
-        'padding': '20px',
-        'background-color': '#f9f9f9',
-        'min-height': '100vh'
-    })
+    dcc.Location(id='url', refresh=False)  # For page routing
 ])
 
+
 ###################################################
-##### CALLBACKS FOR INTERACTIVITY             #####
+##### CALLBACKS                               #####
 ###################################################
 
-# Update global theme and dataset from toggles
+# Update theme in theme-store
 @app.callback(
-    Output('theme-toggle', 'value'),
-    Input('theme-toggle', 'value')
+    Output('theme-store', 'data'),
+    Input('theme-toggle', 'value'),
+    prevent_initial_call=True
 )
-def update_global_theme(theme):
-    global global_theme
-    global_theme = theme
+def update_theme_store(theme: str) -> str:
     return theme
 
+# Update dataset in dataset-store
 @app.callback(
-    Output('dataset-selector', 'value'),
-    Input('dataset-selector', 'value')
+    Output('dataset-store', 'data'),
+    Input('dataset-selector', 'value'),
+    prevent_initial_call=True
 )
-def update_global_dataset(dataset):
-    global global_dataset
-    global_dataset = dataset
+def update_dataset_store(dataset: str) -> str:
     return dataset
 
-# Render the correct page based on the URL and dynamically update when theme or dataset changes
 @app.callback(
-    Output('page-content', 'children'),
+    [Output('page-content', 'children'),
+     Output('page-content', 'style'),
+     Output('sidebar', 'style'),
+     Output('sidebar-content', 'children'),
+     Output('sidebar-state', 'data')],
     [Input('url', 'pathname'),
-     Input('theme-toggle', 'value'),
-     Input('dataset-selector', 'value')]
+     Input('theme-store', 'data'),
+     Input('dataset-store', 'data'),
+     Input('toggle-button', 'n_clicks')],
+    [State('sidebar-state', 'data')]
 )
-def display_page(pathname, theme, dataset):
-    global global_theme, global_dataset
-    global_theme = theme
-    global_dataset = dataset
-
-    if pathname == '/page-2':
-        return render_page_2(global_theme, global_dataset)
-    else:  # Default to Page 1
-        return render_page_1(global_theme, global_dataset)
-
-# Update the page content style based on the theme
-@app.callback(
-    Output('page-content', 'style'),
-    Input('theme-toggle', 'value')
-)
-def update_page_style(theme):
-    if theme == 'dark':
-        return {
-            'margin-left': '12%',
-            'padding': '20px',
-            'background-color': '#333',
-            'color': '#fff',
-            'min-height': '100vh'
-        }
+def update_page_and_sidebar(pathname, theme, dataset, n_clicks, sidebar_state):
+    """
+    Combines the logic for rendering pages, updating sidebar styles, and handling theme changes.
+    """
+    # Determine sidebar state
+    if n_clicks is None:
+        n_clicks = 0
+    if n_clicks % 2 == 1:
+        sidebar_state = 'collapsed'
     else:
-        return {
-            'margin-left': '12%',
-            'padding': '20px',
-            'background-color': '#f9f9f9',
-            'color': '#000',
-            'min-height': '100vh'
-        }
+        sidebar_state = 'expanded'
 
-###################################################
-##### PAGE CONTENT DEFINITIONS                #####
-###################################################
+    # Get the appropriate dataset
+    data = df_s_pg1 if dataset == 'small' else df_l_pg1
 
-def render_page_1(theme, dataset):
-    return html.Div([
-        html.H1("Page 1", style={'textAlign': 'center'}),
-        html.P(f"Theme: {theme.capitalize()}, Dataset: {dataset.capitalize()}."), 
-        html.P("This is the content of Page 1.")
-    ])
+    # Get updated sidebar and content styles
+    sidebar_style, content_style, new_sidebar_state, sidebar_content = show_sidebar(sidebar_state, theme, dataset)
 
-def render_page_2(theme, dataset):
-    return html.Div([
-        html.H1("Page 2", style={'textAlign': 'center'}),
-        html.P(f"Theme: {theme.capitalize()}, Dataset: {dataset.capitalize()}."), 
-        html.P("This is the content of Page 2.")
-    ])
+    # Render the requested page
+    if pathname == '/page-2':
+        page_content = render_page_2(theme, dataset, data)
+    else:
+        page_content = render_page_1(theme, dataset, data)
+
+    return page_content, content_style, sidebar_style, sidebar_content, new_sidebar_state
+
 
 ###################################################
 ##### RUN THE APP                             #####
 ###################################################
 
 if __name__ == '__main__':
+    # Register callbacks before starting the server
+    register_page_1_callbacks(app, df_s_pg1, df_l_pg1)
+
+    # Start the Dash server
     app.run_server(debug=True)
