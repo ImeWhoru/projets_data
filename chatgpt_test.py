@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
 from sklearn.cluster import DBSCAN, KMeans, AgglomerativeClustering
-import random
 import os
 
 # Initialize the Dash app
@@ -25,7 +24,7 @@ clustering_methods = {
 # App layout
 app.layout = html.Div([
     html.H1("t-SNE with Clustering Methods", style={'text-align': 'center'}),
-
+    
     html.Div([
         html.Label("Select Dataset:"),
         dcc.Dropdown(
@@ -34,7 +33,7 @@ app.layout = html.Div([
             placeholder="Select a dataset",
         )
     ], style={'margin': '10px'}),
-
+    
     html.Div([
         html.Label("Choose Clustering Method:"),
         dcc.RadioItems(
@@ -44,23 +43,17 @@ app.layout = html.Div([
             inline=True
         )
     ], style={'margin': '10px'}),
-
-    html.Div([
-        html.Label("Select Features for Clustering:"),
-        dcc.Dropdown(id='feature-dropdown', multi=True, placeholder="Select features"),
-        html.Button("Random Features", id='random-button', n_clicks=0)
-    ], style={'margin': '10px'}),
-
+    
     html.Div([
         html.Button("Recalculate Results", id='recalculate', n_clicks=0, className='button'),
         html.Button("Load Results", id='load-results', n_clicks=0, className='button'),
     ], style={'text-align': 'center', 'margin': '10px'}),
-
+    
     dcc.ConfirmDialog(
         id='confirm-recalculate',
         message="Are you sure you want to recalculate the results? This may take a long time and overwrite already calculated results.",
     ),
-
+    
     dcc.Loading(
         id="loading-spinner",
         type="default",
@@ -73,32 +66,32 @@ app.layout = html.Div([
     html.Div(id='loading-message', style={'text-align': 'center', 'margin': '10px', 'font-weight': 'bold'}),
 ])
 
-# Callback to update feature dropdown based on the selected dataset
+# Callback to show the confirmation dialog when "Recalculate" is clicked
 @app.callback(
-    Output('feature-dropdown', 'options'),
-    Input('dataset-dropdown', 'value')
+    Output('confirm-recalculate', 'displayed'),
+    [Input('recalculate', 'n_clicks')]
 )
-def update_feature_options(selected_dataset):
-    if not selected_dataset:
-        return []
-    try:
-        df = pd.read_csv(selected_dataset)
-        feature_columns = df.columns[2:]  # Exclude 'image_name' and 'id'
-        return [{'label': col, 'value': col} for col in feature_columns]
-    except Exception as e:
-        return []
+def show_confirmation(n_clicks):
+    if n_clicks > 0:
+        return True
+    return False
 
-# Callback for the "Random" button to select random features
+# Callback to display loading message
 @app.callback(
-    Output('feature-dropdown', 'value'),
-    Input('random-button', 'n_clicks'),
-    State('feature-dropdown', 'options')
+    Output('loading-message', 'children'),
+    [Input('confirm-recalculate', 'submit_n_clicks'),
+     Input('load-results', 'n_clicks')],
+    [State('dataset-dropdown', 'value')]
 )
-def select_random_features(n_clicks, available_features):
-    if n_clicks > 0 and available_features:
-        feature_values = [option['value'] for option in available_features]
-        return random.sample(feature_values, min(5, len(feature_values)))
-    return []
+def display_loading_message(confirm_recalculate_clicks, load_results_clicks, selected_dataset):
+    ctx_triggered = ctx.triggered_id
+    if not selected_dataset:
+        return "Please select a dataset."
+    if ctx_triggered == 'confirm-recalculate' and confirm_recalculate_clicks > 0:
+        return "Calculating results..."
+    elif ctx_triggered == 'load-results' and load_results_clicks > 0:
+        return "Loading results..."
+    return ""
 
 # Callback for processing data (executed after confirmation)
 @app.callback(
@@ -107,13 +100,12 @@ def select_random_features(n_clicks, available_features):
     [Input('confirm-recalculate', 'submit_n_clicks'),
      Input('load-results', 'n_clicks')],
     [State('dataset-dropdown', 'value'),
-     State('clustering-method', 'value'),
-     State('feature-dropdown', 'value')]
+     State('clustering-method', 'value')]
 )
-def process_file(confirm_recalculate_clicks, load_results_clicks, selected_dataset, clustering_method, selected_features):
+def process_file(confirm_recalculate_clicks, load_results_clicks, selected_dataset, clustering_method):
     ctx_triggered = ctx.triggered_id
-    if ctx_triggered is None or not selected_dataset or not clustering_method or not selected_features:
-        return "Please select a dataset, clustering method, and features.", dash.no_update
+    if ctx_triggered is None or not selected_dataset or not clustering_method:
+        return "Please select a dataset and clustering method.", dash.no_update
 
     result_filename = selected_dataset.replace('.csv', f'_{clustering_method}_results.csv')
 
@@ -142,12 +134,14 @@ def process_file(confirm_recalculate_clicks, load_results_clicks, selected_datas
         except Exception as e:
             return f"Error loading dataset: {e}", dash.no_update
 
-        # Ensure selected features are valid
-        if not all(feature in df.columns for feature in selected_features):
-            return "Invalid features selected.", dash.no_update
+        # Ensure required columns are present
+        if not all(col in df.columns for col in ['image_name', 'id']):
+            return "Invalid dataset format. Required columns: 'image_name', 'id', features, and embeddings.", dash.no_update
 
-        # Extract selected features and perform t-SNE
-        data = df[selected_features]
+        # Extract features and perform t-SNE
+        features = df.iloc[:, 1:40]
+        embeddings = df.iloc[:, 40:-1]
+        data = pd.concat([features, embeddings], axis=1)
         tsne = TSNE(n_components=2, random_state=42)
         tsne_results = tsne.fit_transform(data)
 
