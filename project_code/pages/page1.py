@@ -2,9 +2,17 @@ import math
 from dash import html, dcc, Input, Output, State, ctx
 from dash.dependencies import ALL
 from functions import get_theme_styles
+import os
+import cv2
+import numpy as np
+from tqdm import tqdm
+import plotly.express as px
+import pandas as pd
 
 # Define the folder for images
 image_folder = 'assets/img_celeba/'  # Dash serves from `assets/`
+image_folder_average = 'celeba/img_celeba/'
+output_path = 'project_code/assets/average_image.jpg'
 
 # Render Page 1
 def render_page_1(theme: str, dataset: str, data) -> html.Div:
@@ -103,6 +111,37 @@ def render_page_1(theme: str, dataset: str, data) -> html.Div:
                 'border-radius': '5px'
             })
         ], style={'textAlign': 'right', 'margin-top': '10px', 'margin-right': '15%'}),
+
+        # Button for generating the average image
+        html.Button("Generate Average Picture", id='generate-average-btn', n_clicks=0, style={
+            'margin': '20px 0',
+            'padding': '10px',
+            'background-color': theme_styles['background-color'],
+            'color': theme_styles['color'],
+            'border': f'2px solid {theme_styles["color"]}',
+            'border-radius': '5px'
+        }),
+
+        # Placeholder for displaying the average image
+        html.Div(id='average-image-container', children=[
+            html.P("Average image will appear here.", style={'textAlign': 'center', 'color': theme_styles['color']}),
+        ], style={
+            'textAlign': 'center',
+            'margin-top': '20px'
+        }),
+
+        # Attribute Distribution Bar Chart
+        html.Div(id='attribute-distribution-graph', style={
+            'textAlign': 'center',
+            'margin-top': '30px',
+            'padding': '20px',
+            'width': '80%',
+            'margin-left': 'auto',
+            'margin-right': 'auto',
+            'border-radius': '8px',
+            'background-color': theme_styles['background-color'],
+            'box-shadow': '0px 4px 6px rgba(0,0,0,0.2)'
+        }),
     ], style={
         'background-color': theme_styles['background-color'],
         'color': theme_styles['color'],
@@ -117,92 +156,108 @@ def register_page_1_callbacks(app, df_s_pg1, df_l_pg1):
         Input('dataset-store', 'data')
     )
     def update_characteristics_options(selected_dataset):
-        """
-        Populate the characteristics dropdown options based on the selected dataset.
-        """
         df = df_s_pg1 if selected_dataset == 'small' else df_l_pg1
-
-        # Verify and exclude non-characteristic columns (like IDs or paths)
         characteristic_columns = df.columns[1:]  # Adjust this as per your dataset
-
         return [{'label': col, 'value': col} for col in characteristic_columns]
 
     @app.callback(
         [Output('selected-characteristics-container', 'children'),
-        Output('feature-count', 'children')],
+         Output('feature-count', 'children')],
         Input('characteristics-dropdown', 'value')
     )
     def update_selected_characteristics(selected_characteristics):
-        """
-        Update the list of selected characteristics with Include/Exclude radio items in a single line.
-        """
         if not selected_characteristics:
-            # No characteristics selected; return a message and zero count
             return html.P("No characteristics selected.", style={'color': 'gray', 'textAlign': 'center'}), "Number of Features Selected: 0"
 
-        # Generate a row for each selected characteristic with Include/Exclude options
         children = []
         for characteristic in selected_characteristics:
             children.append(html.Div([
-                html.Label(f"{characteristic}:", style={'font-weight': 'bold', 'margin-right': '10px', 'display': 'inline-block'}),
+                html.Label(f"{characteristic}:", style={'font-weight': 'bold', 'margin-right': '10px'}),
                 dcc.RadioItems(
                     id={'type': 'filter-mode', 'index': characteristic},
-                    options=[
-                        {'label': 'Include', 'value': 'include'},
-                        {'label': 'Exclude', 'value': 'exclude'}
-                    ],
-                    value='include',
-                    style={'display': 'inline-block', 'margin-left': '10px'}
+                    options=[{'label': 'Include', 'value': 'include'}, {'label': 'Exclude', 'value': 'exclude'}],
+                    value='include'
                 )
-            ], style={'margin-bottom': '10px', 'display': 'flex', 'align-items': 'center'}))  # Flex layout for alignment
-
-        # Feature count text
+            ]))
         feature_count = f"Number of Features Selected: {len(selected_characteristics)}"
-
         return children, feature_count
 
     @app.callback(
         [Output('visualization-box', 'children'),
-        Output('people-count', 'children')],
+         Output('people-count', 'children')],
         [Input('dataset-store', 'data'),
-        Input({'type': 'filter-mode', 'index': ALL}, 'value'),
-        Input('prev-button', 'n_clicks'),
-        Input('next-button', 'n_clicks')],
+         Input({'type': 'filter-mode', 'index': ALL}, 'value'),
+         Input('prev-button', 'n_clicks'),
+         Input('next-button', 'n_clicks')],
         [State('characteristics-dropdown', 'value')]
     )
     def update_visualization(dataset, filter_modes, prev_clicks, next_clicks, selected_characteristics):
-        """
-        Update the visualization and people count based on selected characteristics and pagination.
-        """
         df = df_s_pg1 if dataset == 'small' else df_l_pg1
-
-        # Apply filtering logic
         if selected_characteristics and filter_modes:
             for characteristic, mode in zip(selected_characteristics, filter_modes):
-                if mode == 'include':
-                    df = df[df[characteristic] == 1]
-                elif mode == 'exclude':
-                    df = df[df[characteristic] != 1]
+                df = df[df[characteristic] == 1] if mode == 'include' else df[df[characteristic] != 1]
 
-        # Generate the list of image paths
         images = [f"{image_folder}{row.iloc[0]}" for _, row in df.iterrows()]
         people_count = f"People Found: {len(df)}"
         page_size = 10
-        total_pages = max(1, math.ceil(len(images) / page_size))
+        current_page = (next_clicks - prev_clicks) % (max(1, math.ceil(len(images) / page_size)))
+        start_idx, end_idx = current_page * page_size, (current_page + 1) * page_size
 
-        # Corrected logic for page calculation
-        current_page = (next_clicks - prev_clicks) % total_pages if len(images) > 0 else 0
-        start_idx, end_idx = current_page * page_size, min(len(images), (current_page + 1) * page_size)
-
-        # Handle no images
-        if len(images) == 0:
+        if not images:
             return [html.P("No images to display.", style={'textAlign': 'center', 'color': 'red'})], people_count
 
-        # Display images for the current page with tooltips
-        return [
-            html.Img(
-                src=img,
-                title=img.split("/")[-1],  # Extract the image name from the path
-                style={'width': '100%', 'padding': '5px'}
-            ) for img in images[start_idx:end_idx]
-        ], people_count
+        return [html.Img(src=img, style={'width': '100%'}) for img in images[start_idx:end_idx]], people_count
+
+    @app.callback(
+        Output('average-image-container', 'children'),
+        Input('generate-average-btn', 'n_clicks'),
+        State('dataset-store', 'data'),
+        State('characteristics-dropdown', 'value'),
+        prevent_initial_call=True
+    )
+    def generate_average_image(n_clicks, dataset, selected_characteristics):
+        df = df_s_pg1 if dataset == 'small' else df_l_pg1
+        if selected_characteristics:
+            for characteristic in selected_characteristics:
+                df = df[df[characteristic] == 1]
+        image_paths = [f"{image_folder_average}{img}" for img in df['image_name']]
+        try:
+            compute_average_image(image_paths, output_path, resize_dim=(256, 256))
+            return html.Img(src=f'/assets/{os.path.basename(output_path)}', style={'max-width': '100%'})
+        except ValueError as e:
+            return html.P(str(e), style={'color': 'red'})
+
+    @app.callback(
+        Output('attribute-distribution-graph', 'children'),
+        [Input('dataset-store', 'data')],
+        [State('characteristics-dropdown', 'value')]
+    )
+    def update_distribution_graph(dataset, selected_characteristics):
+        df = df_s_pg1 if dataset == 'small' else df_l_pg1
+        if selected_characteristics:
+            data = df[selected_characteristics].sum().reset_index()
+            data.columns = ['Attribute', 'Count']
+            fig = px.bar(data, x='Attribute', y='Count', title="Attribute Distribution")
+            fig.update_layout(margin={'l': 0, 'r': 0, 't': 40, 'b': 0})
+            return dcc.Graph(figure=fig)
+        return html.P("Select characteristics to view the distribution.", style={'textAlign': 'center', 'color': 'gray'})
+
+
+def compute_average_image(image_paths, output_path, resize_dim=None):
+    total_images = 0
+    sum_image = None
+    for img_path in tqdm(image_paths, desc="Processing images"):
+        img = cv2.imread(img_path)
+        if img is None:
+            continue
+        if resize_dim:
+            img = cv2.resize(img, resize_dim)
+        img = img.astype(np.float32)
+        if sum_image is None:
+            sum_image = np.zeros_like(img)
+        sum_image += img
+        total_images += 1
+    if total_images == 0:
+        raise ValueError("No valid images found.")
+    avg_image = np.clip(sum_image / total_images, 0, 255).astype(np.uint8)
+    cv2.imwrite(output_path, avg_image)
