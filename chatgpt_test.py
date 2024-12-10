@@ -45,6 +45,22 @@ app.layout = html.Div([
     ], style={'margin': '10px'}),
     
     html.Div([
+        html.Label("KMeans Clusters:"),
+        dcc.Input(id='kmeans-clusters', type='number', min=1, value=5, step=1),
+    ], id='kmeans-options', style={'display': 'none', 'margin': '10px'}),
+    
+    html.Div([
+        html.Label("DBSCAN Parameters:"),
+        dcc.Input(id='dbscan-eps', type='number', min=0.1, step=0.1, value=5, placeholder="eps"),
+        dcc.Input(id='dbscan-min-samples', type='number', min=1, value=10, step=1, placeholder="min_samples"),
+    ], id='dbscan-options', style={'display': 'none', 'margin': '10px'}),
+    
+    html.Div([
+        html.Label("Hierarchical Clusters:"),
+        dcc.Input(id='hierarchical-clusters', type='number', min=1, value=5, step=1),
+    ], id='hierarchical-options', style={'display': 'none', 'margin': '10px'}),
+    
+    html.Div([
         html.Button("Recalculate Results", id='recalculate', n_clicks=0, className='button'),
         html.Button("Load Results", id='load-results', n_clicks=0, className='button'),
     ], style={'text-align': 'center', 'margin': '10px'}),
@@ -66,32 +82,29 @@ app.layout = html.Div([
     html.Div(id='loading-message', style={'text-align': 'center', 'margin': '10px', 'font-weight': 'bold'}),
 ])
 
-# Callback to show the confirmation dialog when "Recalculate" is clicked
+# Callback to toggle parameter inputs based on clustering method
+@app.callback(
+    [Output('kmeans-options', 'style'),
+     Output('dbscan-options', 'style'),
+     Output('hierarchical-options', 'style')],
+    [Input('clustering-method', 'value')]
+)
+def toggle_options(clustering_method):
+    if clustering_method == 'kmeans':
+        return {'margin': '10px'}, {'display': 'none'}, {'display': 'none'}
+    elif clustering_method == 'dbscan':
+        return {'display': 'none'}, {'margin': '10px'}, {'display': 'none'}
+    elif clustering_method == 'hierarchical':
+        return {'display': 'none'}, {'display': 'none'}, {'margin': '10px'}
+    return {'display': 'none'}, {'display': 'none'}, {'display': 'none'}
+
+# Callback for showing the confirmation dialog
 @app.callback(
     Output('confirm-recalculate', 'displayed'),
-    [Input('recalculate', 'n_clicks')]
+    Input('recalculate', 'n_clicks')
 )
 def show_confirmation(n_clicks):
-    if n_clicks > 0:
-        return True
-    return False
-
-# Callback to display loading message
-@app.callback(
-    Output('loading-message', 'children'),
-    [Input('confirm-recalculate', 'submit_n_clicks'),
-     Input('load-results', 'n_clicks')],
-    [State('dataset-dropdown', 'value')]
-)
-def display_loading_message(confirm_recalculate_clicks, load_results_clicks, selected_dataset):
-    ctx_triggered = ctx.triggered_id
-    if not selected_dataset:
-        return "Please select a dataset."
-    if ctx_triggered == 'confirm-recalculate' and confirm_recalculate_clicks > 0:
-        return "Calculating results..."
-    elif ctx_triggered == 'load-results' and load_results_clicks > 0:
-        return "Loading results..."
-    return ""
+    return n_clicks > 0
 
 # Callback for processing data (executed after confirmation)
 @app.callback(
@@ -100,17 +113,17 @@ def display_loading_message(confirm_recalculate_clicks, load_results_clicks, sel
     [Input('confirm-recalculate', 'submit_n_clicks'),
      Input('load-results', 'n_clicks')],
     [State('dataset-dropdown', 'value'),
-     State('clustering-method', 'value')]
+     State('clustering-method', 'value'),
+     State('kmeans-clusters', 'value'),
+     State('dbscan-eps', 'value'),
+     State('dbscan-min-samples', 'value'),
+     State('hierarchical-clusters', 'value')]
 )
-def process_file(confirm_recalculate_clicks, load_results_clicks, selected_dataset, clustering_method):
-    ctx_triggered = ctx.triggered_id
-    if ctx_triggered is None or not selected_dataset or not clustering_method:
-        return "Please select a dataset and clustering method.", dash.no_update
-
-    result_filename = selected_dataset.replace('.csv', f'_{clustering_method}_results.csv')
-
-    # Load results if "Load Results" is clicked
-    if ctx_triggered == 'load-results':
+def process_file(confirm_recalculate_clicks, load_results_clicks, selected_dataset, clustering_method, kmeans_clusters, dbscan_eps, dbscan_min_samples, hierarchical_clusters):
+    # Check if either button was clicked
+    if ctx.triggered_id == 'load-results' and load_results_clicks > 0:
+        # Load precomputed results
+        result_filename = selected_dataset.replace('.csv', f'_{clustering_method}_results.csv')
         if os.path.exists(result_filename):
             df = pd.read_csv(result_filename)
             fig = px.scatter(
@@ -122,62 +135,54 @@ def process_file(confirm_recalculate_clicks, load_results_clicks, selected_datas
                 title=f"t-SNE Results with {clustering_method.upper()} Clustering (Loaded)",
                 labels={'Cluster': 'Cluster ID'}
             )
+            fig.update_layout(width=700, height=700, xaxis=dict(scaleanchor="y", title="t-SNE 1"), yaxis=dict(title="t-SNE 2"))
             return f"Loaded results from file: {result_filename}", fig
         else:
             return "No precomputed results found. Please recalculate.", dash.no_update
 
-    # Recalculate results if "Recalculate" is confirmed
-    if ctx_triggered == 'confirm-recalculate' and confirm_recalculate_clicks > 0:
+    if ctx.triggered_id == 'confirm-recalculate' and confirm_recalculate_clicks > 0:
+        # Recalculate results
         try:
-            # Load the selected dataset
             df = pd.read_csv(selected_dataset)
+            features = df.iloc[:, 1:40]
+            embeddings = df.iloc[:, 40:-1]
+            data = pd.concat([features, embeddings], axis=1)
+            tsne = TSNE(n_components=2, random_state=42)
+            tsne_results = tsne.fit_transform(data)
+
+            df['t-SNE 1'] = tsne_results[:, 0]
+            df['t-SNE 2'] = tsne_results[:, 1]
+
+            if clustering_method == 'kmeans':
+                cluster_model = KMeans(n_clusters=kmeans_clusters, random_state=42)
+            elif clustering_method == 'dbscan':
+                cluster_model = DBSCAN(eps=dbscan_eps, min_samples=dbscan_min_samples)
+            elif clustering_method == 'hierarchical':
+                cluster_model = AgglomerativeClustering(n_clusters=hierarchical_clusters)
+            else:
+                return "Invalid clustering method selected.", dash.no_update
+
+            clusters = cluster_model.fit_predict(tsne_results)
+            df['Cluster'] = clusters
+
+            result_filename = selected_dataset.replace('.csv', f'_{clustering_method}_results.csv')
+            df.to_csv(result_filename, index=False)
+
+            fig = px.scatter(
+                df,
+                x='t-SNE 1',
+                y='t-SNE 2',
+                color=df['Cluster'].astype(str),
+                hover_name='image_name',
+                title=f"t-SNE Results with {clustering_method.upper()} Clustering",
+                labels={'Cluster': 'Cluster ID'}
+            )
+            fig.update_layout(width=700, height=700, xaxis=dict(scaleanchor="y", title="t-SNE 1"), yaxis=dict(title="t-SNE 2"))
+            return f"Results recalculated and saved to {result_filename}.", fig
         except Exception as e:
-            return f"Error loading dataset: {e}", dash.no_update
+            return f"Error: {e}", dash.no_update
 
-        # Ensure required columns are present
-        if not all(col in df.columns for col in ['image_name', 'id']):
-            return "Invalid dataset format. Required columns: 'image_name', 'id', features, and embeddings.", dash.no_update
-
-        # Extract features and perform t-SNE
-        features = df.iloc[:, 1:40]
-        embeddings = df.iloc[:, 40:-1]
-        data = pd.concat([features, embeddings], axis=1)
-        tsne = TSNE(n_components=2, random_state=42)
-        tsne_results = tsne.fit_transform(data)
-
-        # Add t-SNE results to the dataframe
-        df['t-SNE 1'] = tsne_results[:, 0]
-        df['t-SNE 2'] = tsne_results[:, 1]
-
-        # Apply selected clustering method
-        if clustering_method == 'dbscan':
-            cluster_model = DBSCAN(eps=5, min_samples=10)
-        elif clustering_method == 'kmeans':
-            cluster_model = KMeans(n_clusters=5, random_state=42)
-        elif clustering_method == 'hierarchical':
-            cluster_model = AgglomerativeClustering(n_clusters=5)
-        else:
-            return "Invalid clustering method selected.", dash.no_update
-
-        clusters = cluster_model.fit_predict(tsne_results)
-        df['Cluster'] = clusters
-
-        # Save results to file
-        df.to_csv(result_filename, index=False)
-
-        # Generate plot
-        fig = px.scatter(
-            df,
-            x='t-SNE 1',
-            y='t-SNE 2',
-            color=df['Cluster'].astype(str),
-            hover_name='image_name',
-            title=f"t-SNE Results with {clustering_method.upper()} Clustering ({selected_dataset})",
-            labels={'Cluster': 'Cluster ID'}
-        )
-
-        return f"Results recalculated and saved to {result_filename}.", fig
-
+    return dash.no_update, dash.no_update
 
 # Run the Dash app
 if __name__ == '__main__':
