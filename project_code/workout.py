@@ -15,7 +15,7 @@ from dash.exceptions import PreventUpdate
 from functions import show_sidebar, get_theme_styles
 from data_loader import load_datasets
 from pages.page1 import render_page_1, register_page_1_callbacks
-from pages.page2 import render_page_2
+from pages.page2 import render_page_2, register_page_2_callbacks
 
 df_s_pg1, df_l_pg1 = load_datasets()
 
@@ -100,4 +100,5 @@ def update_page_and_sidebar(pathname, theme, dataset, n_clicks, sidebar_state):
 
 if __name__ == '__main__':
     register_page_1_callbacks(app, df_s_pg1, df_l_pg1)
+    register_page_2_callbacks(app)  # Register callbacks for Page 2
     app.run_server(debug=True, dev_tools_ui=False, dev_tools_props_check=False)
