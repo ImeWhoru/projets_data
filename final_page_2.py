@@ -17,6 +17,25 @@ app.title = "Page 2"
 
 app.layout = html.Div([
     html.H1("Page 2: Dimension Reduction and Clustering", style={'font-size': '60px', 'text-align': 'center'}),
+    
+                    # Box to display the characteristics choices
+                    html.Div([
+                        
+                        # Dropdown to select characteristics
+                        html.Div([
+                            dcc.Dropdown(
+                                id='characteristics-dropdown',
+                                options=[],
+                                multi=True,
+                                placeholder="Select Characteristics to be Filtered by...",
+                                style={
+                                    'background-color': theme_styles['background-color'],
+                                    'color': theme_styles['color'],
+                                    'border-radius': '30px',
+                                    'margin-bottom': '10px',
+                                }
+                            ),
+                        ]),
     html.Div([html.Label('Please select the wanted dataset'),
               dcc.Dropdown(id='dataset-dropdown',
                            options=[{'label': name, 'value': method} for name, method in dataset_select.items()],
@@ -56,6 +75,28 @@ app.layout = html.Div([
 
 ])
 
+def register_page_1_callbacks(app, df_s_pg1, df_l_pg1):
+    @app.callback(
+        Output('characteristics-dropdown', 'options'),
+        Input('dataset-store', 'data')
+    )
+    def update_characteristics_options(selected_dataset):
+        """
+        Populate the characteristics dropdown based on the selected dataset.
+        """
+        # Choose the appropriate dataset
+        if selected_dataset == 'small':
+            df = df_s_pg1
+        elif selected_dataset == 'large':
+            df = df_l_pg1
+        else:
+            raise PreventUpdate  # No valid dataset selected
+
+        # Extract characteristic columns (assumes characteristics start from the second column)
+        characteristic_columns = df.columns[1:]  # Adjust the index if characteristics don't start from the second column
+        return [{'label': col, 'value': col} for col in characteristic_columns]
+
+
 @app.callback(
     [Output('kmeans-options', 'style'),
      Output('dbscan-options', 'style'),
@@ -91,6 +132,8 @@ def process_clustering(n_clicks, dataset, dim_red, clustering_method, k_clusters
     try:
         df = pd.read_csv(dataset)
         features = df.iloc[:, 1:40]
+        embeddings = df.iloc[:, 40:-1]
+        data = pd.concat([features, embeddings], axis=1)
 
         if order == 'dr_clustering':
             if dim_red == 'pca':
@@ -100,7 +143,7 @@ def process_clustering(n_clicks, dataset, dim_red, clustering_method, k_clusters
             else:
                 return "Invalid dimension reduction method.", dash.no_update
 
-            reduced_data = reducer.fit_transform(features)
+            reduced_data = reducer.fit_transform(data)
             df['Dim 1'], df['Dim 2'] = reduced_data[:, 0], reduced_data[:, 1]
 
             if clustering_method == 'kmeans':

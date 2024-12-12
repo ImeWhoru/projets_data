@@ -3,7 +3,6 @@ from dash import html, dcc, Input, Output, State, ctx
 from dash.dependencies import Input, Output, State, ALL
 
 from dash.exceptions import PreventUpdate
-import dash_bootstrap_components as dbc
 
 from functions import get_theme_styles
 import os
