@@ -20,6 +20,15 @@ def load_datasets():
         print(f"Error reading CSV files: \n{e}")
         exit()
 
-    df_s_pg1 = df_s.iloc[:, :40].dropna()
-    df_l_pg1 = df_l.iloc[:, :40].dropna()
+
+    # Convert -1 to 0 for binary processing
+    df_binary_s = df_s.copy()
+    df_binary_l = df_l.copy()
+
+    # Vectorized approach
+    df_binary_s.iloc[:, 1:] = (df_binary_s.iloc[:, 1:] == 1).astype(int)
+    df_binary_l.iloc[:, 1:] = (df_binary_l.iloc[:, 1:] == 1).astype(int)
+    
+    df_s_pg1 = df_binary_s.iloc[:, :40].dropna()
+    df_l_pg1 = df_binary_l.iloc[:, :40].dropna()
     return df_s_pg1, df_l_pg1

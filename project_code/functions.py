@@ -1,64 +1,41 @@
 # functions.py
-
 from dash import html, dcc
 
-# Centralisation des thèmes
 THEMES = {
     'light': {
         'background-color': '#f4f4f4',
         'sidebar-color': '#f9f9f9',
         'color': '#000',
-        'text-color': '#000'
+        'text-color': '#000',
+        'title-color': '#000',
+        'box-color': '#fff',
+        'titlebg-color': '#e6e6e6',
+
+        'boxes-color': '#DEDFE4',
+        'boxes-hover-color': '#D0D1D5',
+        'boxes-selected-color': '#C2C3C7',
+        
+        
     },
     'dark': {
         'background-color': '#333',
         'sidebar-color': '#222',
         'color': '#fff',
-        'text-color': '#fff'
+        'text-color': '#fff',
+        'title-color': '#fff',
+        'box-color': '#444',
+        'titlebg-color': '#111',
+
+        'boxes-color': '#DEDFE4',
+        'boxes-hover-color': '#D0D1D5',
+        'boxes-selected-color': '#C2C3C7',
     }
 }
 
 def get_theme_styles(theme: str) -> dict:
-    """
-    Retourne les styles associés à un thème donné.
-    """
-    return THEMES.get(theme, THEMES['light'])  # Par défaut : thème clair
+    return THEMES.get(theme, THEMES['light'])
 
-# def get_sidebar_content(theme: str, dataset: str):
-#     """
-#     Returns the content of the sidebar based on the current theme and dataset.
-#     """
-#     return html.Div([
-#         html.H2("Settings", style={'textAlign': 'center', 'margin-bottom': '20px'}),
-#         html.Label("Theme Selector", style={'font-weight': 'bold'}),
-#         dcc.RadioItems(
-#             id='theme-toggle',
-#             options=[
-#                 {'label': 'Light Mode', 'value': 'light'},
-#                 {'label': 'Dark Mode', 'value': 'dark'}
-#             ],
-#             value=theme,
-#             style={'margin-bottom': '20px'}
-#         ),
-#         html.Hr(),
-#         html.Label("Dataset Selector", style={'font-weight': 'bold'}),
-#         dcc.RadioItems(
-#             id='dataset-selector',
-#             options=[
-#                 {'label': 'Small Dataset', 'value': 'small'},
-#                 {'label': 'Large Dataset', 'value': 'large'}
-#             ],
-#             value=dataset,
-#             style={'margin-bottom': '20px'}
-#         ),
-#         html.A("Page 1", href="/page-1", style={'display': 'block', 'margin-top': '10px'}),
-#         html.A("Page 2", href="/page-2", style={'display': 'block', 'margin-top': '10px'}),
-#     ])
-
-def show_sidebar(sidebar_state: str, theme: str, dataset: str) -> tuple:
-    """
-    Updates the sidebar and content styles based on the sidebar state and theme.
-    """
+def show_sidebar(sidebar_state: str, theme: str, dataset: str, current_page: str = "1") -> tuple:
     theme_styles = get_theme_styles(theme)
 
     sidebar_style = {
@@ -69,10 +46,9 @@ def show_sidebar(sidebar_state: str, theme: str, dataset: str) -> tuple:
         'box-shadow': '2px 0px 5px rgba(0,0,0,0.1)'
     }
     content_style = {
-        'padding': '20px',
         'background-color': theme_styles['background-color'],
         'color': theme_styles['color'],
-        'height': '100%',
+        'height': '1500px',
     }
 
     if sidebar_state == 'collapsed':
@@ -105,6 +81,9 @@ def show_sidebar(sidebar_state: str, theme: str, dataset: str) -> tuple:
                 value=dataset,
                 style={'margin-bottom': '20px'}
             ),
+            html.Hr(style={'border-top': '2px solid'}),
+            html.H4(f"Current Page: {current_page}", style={'color': theme_styles['color']}),
+            html.Hr(style={'border-top': '2px solid'}),
             html.A("Page 1", href="/page-1", style={'display': 'block', 'margin-top': '10px'}),
             html.A("Page 2", href="/page-2", style={'display': 'block', 'margin-top': '10px'}),
         ])
