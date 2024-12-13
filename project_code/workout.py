@@ -12,10 +12,12 @@
 from dash import Dash, html, dcc, Input, Output, State
 from dash.exceptions import PreventUpdate
 
-from functions import show_sidebar, get_theme_styles
+from functions import show_sidebar
 from data_loader import load_datasets
 from pages.page1 import render_page_1, register_page_1_callbacks
 from pages.page2 import render_page_2, register_page_2_callbacks
+from pages.page3 import render_page_3, register_page_3_callbacks
+
 
 df_s_pg1, df_l_pg1 = load_datasets()
 
@@ -91,7 +93,9 @@ def update_page_and_sidebar(pathname, theme, dataset, n_clicks, sidebar_state):
     sidebar_style, content_style, new_sidebar_state, sidebar_content = show_sidebar(sidebar_state, theme, dataset)
 
     # Render the appropriate page
-    if pathname == '/page-2':
+    if pathname == '/page-3':
+        page_content = render_page_3(theme, dataset, data)
+    elif pathname == '/page-2':
         page_content = render_page_2(theme, dataset, data)
     else:  # Default to Page 1
         page_content = render_page_1(theme, dataset, data)
@@ -101,4 +105,6 @@ def update_page_and_sidebar(pathname, theme, dataset, n_clicks, sidebar_state):
 if __name__ == '__main__':
     register_page_1_callbacks(app, df_s_pg1, df_l_pg1)
     register_page_2_callbacks(app)  # Register callbacks for Page 2
+    register_page_3_callbacks(app, df_s_pg1, df_l_pg1)  # Register Page 3 callbacks
+
     app.run_server(debug=True, dev_tools_ui=False, dev_tools_props_check=False)

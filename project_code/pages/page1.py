@@ -26,7 +26,7 @@ def render_page_1(theme: str, dataset: str, data) -> html.Div:
             # Box for the title
             html.Div([
                 # Page 1 Header
-                html.H1("Data Visualization", 
+                html.H1("Page 1: Data Visualization", 
                         style={
                             'textAlign': 'center',
                             'color': theme_styles['title-color'],
@@ -456,10 +456,6 @@ def register_page_1_callbacks(app, df_s_pg1, df_l_pg1):
         except ValueError as e:
             # Handle cases where no valid images are found
             return html.P(str(e), style={'color': 'red'})
-
-
-
-
 
 def compute_average_image(image_paths, output_path, resize_dim=None):
     total_images = 0

@@ -1,6 +1,7 @@
+# pages/page2.py
 
 import dash
-from dash import dcc, html, Input, Output, State, ctx
+from dash import html, dcc, Input, Output, State
 import pandas as pd
 import plotly.express as px
 from sklearn.manifold import TSNE
@@ -8,36 +9,45 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN, KMeans, AgglomerativeClustering
 from functions import get_theme_styles
 
-dataset_select = {'Small Dataset': 'celeba/celeba_buffalo_s.csv', 'Large Dataset': 'celeba/celeba_buffalo_l.csv'}
+# Constants for clustering and dimensionality reduction options
 dim_red_methods = {'PCA': 'pca', 't-SNE': 'tsne'}
 clustering_method_select = {'KMeans': 'kmeans', 'DBSCAN': 'dbscan', 'Hierarchical': 'hierarchical'}
 order_select = {'DR -> Clustering': 'dr_clustering', 'Clustering -> DR': 'clustering_dr'}
 
 def render_page_2(theme: str, dataset: str, data) -> html.Div:
+    """
+    Render Page 2 layout.
+    Args:
+        theme (str): Selected theme ('light' or 'dark').
+        dataset (str): Selected dataset ('small' or 'large').
+        data: Preloaded dataset.
+    Returns:
+        html.Div: Page layout.
+    """
     theme_styles = get_theme_styles(theme)
 
     return html.Div([
-        html.H1("Page 2: Dimension Reduction and Clustering", style={'font-size': '60px', 'text-align': 'center', 'color': theme_styles['title-color']}),
-        html.Div([html.Label('Please select the wanted dataset'),
-                  dcc.Dropdown(id='dataset-dropdown',
-                               options=[{'label': name, 'value': method} for name, method in dataset_select.items()],
-                               value=list(dataset_select.values())[0])],
-                 style={'font-size': '20px', 'margin': '10px'}),
+        html.H1("Page 2: Dimension Reduction and Clustering", 
+                style={'font-size': '60px', 'text-align': 'center', 'color': theme_styles['title-color']}),
+
         html.Div([html.Label('Please select the dimension reduction method'),
                   dcc.RadioItems(id='dimension-reduction-dropdown',
                                  options=[{'label': name, 'value': method} for name, method in dim_red_methods.items()],
                                  value='pca')],
                  style={'font-size': '20px', 'margin': '10px'}),
+
         html.Div([html.Label('Please select the clustering method'),
                   dcc.RadioItems(id='clustering-method',
                                  options=[{'label': name, 'value': method} for name, method in clustering_method_select.items()],
                                  value='kmeans')],
                  style={'font-size': '20px', 'margin': '10px'}),
+
         html.Div([html.Label('Please select the order of operations'),
                   dcc.RadioItems(id='order-dropdown',
                                  options=[{'label': name, 'value': method} for name, method in order_select.items()],
                                  value='dr_clustering')],
                  style={'font-size': '20px', 'margin': '10px'}),
+
         html.Div(id='kmeans-options', children=[html.Label("Number of Clusters for KMeans:"),
                                                 dcc.Input(id='kmeans-clusters', type='number', value=3, style={'margin': '10px'})],
                  style={'margin': '10px'}),
@@ -50,11 +60,15 @@ def render_page_2(theme: str, dataset: str, data) -> html.Div:
         html.Div(id='hierarchical-options', children=[html.Label("Number of Clusters for Hierarchical Clustering:"),
                                                       dcc.Input(id='hierarchical-clusters', type='number', value=3, style={'margin': '10px'})],
                  style={'display': 'none', 'margin': '10px'}),
+
         html.Button("Recalculate/Load Results", id='recalculate', n_clicks=0, style={'margin': '10px'}),
-        dcc.Loading(id="loading-spinner", children=[html.Div(id='output-message'),
-                                                    html.Div([dcc.Graph(id='tsne-clustering-plot', style={'height': '700px'})],
-                                                             style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'})])
+
+        dcc.Loading(id="loading-spinner", children=[
+            html.Div(id='output-message'),
+            html.Div([dcc.Graph(id='tsne-clustering-plot', style={'height': '700px'})],
+                     style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center'})])
     ], style={'background-color': theme_styles['background-color'], 'color': theme_styles['text-color'], 'padding': '20px'})
+
 
 def register_page_2_callbacks(app):
     @app.callback(
@@ -76,7 +90,7 @@ def register_page_2_callbacks(app):
         [Output('output-message', 'children'),
          Output('tsne-clustering-plot', 'figure')],
         Input('recalculate', 'n_clicks'),
-        [State('dataset-dropdown', 'value'),
+        [State('dataset-store', 'data'),  # Use dataset value from the sidebar
          State('dimension-reduction-dropdown', 'value'),
          State('clustering-method', 'value'),
          State('kmeans-clusters', 'value'),
@@ -90,9 +104,14 @@ def register_page_2_callbacks(app):
             return dash.no_update, dash.no_update
 
         try:
-            df = pd.read_csv(dataset)
+            # Load dataset based on selection
+
+            named = 's' if dataset == 'small' else 'l'
+
+            df = pd.read_csv(f"celeba/celeba_buffalo_{named}.csv")
             features = df.iloc[:, 1:40]
 
+            # Dimensionality Reduction and Clustering
             if order == 'dr_clustering':
                 if dim_red == 'pca':
                     reducer = PCA(n_components=2)
@@ -114,6 +133,7 @@ def register_page_2_callbacks(app):
                     return "Invalid clustering method.", dash.no_update
 
                 df['Cluster'] = model.fit_predict(reduced_data)
+
             elif order == 'clustering_dr':
                 if clustering_method == 'kmeans':
                     model = KMeans(n_clusters=k_clusters)

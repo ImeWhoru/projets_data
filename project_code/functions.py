@@ -15,7 +15,6 @@ THEMES = {
         'boxes-hover-color': '#D0D1D5',
         'boxes-selected-color': '#C2C3C7',
         
-        
     },
     'dark': {
         'background-color': '#333',
@@ -35,7 +34,7 @@ THEMES = {
 def get_theme_styles(theme: str) -> dict:
     return THEMES.get(theme, THEMES['light'])
 
-def show_sidebar(sidebar_state: str, theme: str, dataset: str, current_page: str = "1") -> tuple:
+def show_sidebar(sidebar_state: str, theme: str, dataset: str, current_page: str = "/page-1") -> tuple:
     theme_styles = get_theme_styles(theme)
 
     sidebar_style = {
@@ -58,6 +57,15 @@ def show_sidebar(sidebar_state: str, theme: str, dataset: str, current_page: str
     else:
         sidebar_style.update({'width': '10%', 'padding': '20px'})
         content_style.update({'margin-left': '12%'})
+
+        def link_style(page_path):
+            return {
+                'display': 'block',
+                'margin-top': '10px',
+                'color': theme_styles['text-color'],
+                'font-weight': 'bold',
+            }
+
         sidebar_content = html.Div([
             html.H2("Settings", style={'textAlign': 'center', 'margin-bottom': '20px'}),
             html.Label("Theme Selector", style={'font-weight': 'bold'}),
@@ -82,10 +90,10 @@ def show_sidebar(sidebar_state: str, theme: str, dataset: str, current_page: str
                 style={'margin-bottom': '20px'}
             ),
             html.Hr(style={'border-top': '2px solid'}),
-            html.H4(f"Current Page: {current_page}", style={'color': theme_styles['color']}),
-            html.Hr(style={'border-top': '2px solid'}),
-            html.A("Page 1", href="/page-1", style={'display': 'block', 'margin-top': '10px'}),
-            html.A("Page 2", href="/page-2", style={'display': 'block', 'margin-top': '10px'}),
+            html.H4("Navigation", style={'margin-bottom': '10px'}),
+            html.A("Page 1", href="/page-1", style=link_style('/page-1')),
+            html.A("Page 2", href="/page-2", style=link_style('/page-2')),
+            html.A("Page 3", href="/page-3", style=link_style('/page-3')),
         ])
 
     return sidebar_style, content_style, sidebar_state, sidebar_content
