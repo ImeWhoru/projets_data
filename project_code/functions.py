@@ -25,7 +25,7 @@ THEMES = {
         'box-color': '#444',
         'titlebg-color': '#111',
 
-        'boxes-color': '#DEDFE4',
+        'boxes-color': '#828388',
         'boxes-hover-color': '#D0D1D5',
         'boxes-selected-color': '#C2C3C7',
     }

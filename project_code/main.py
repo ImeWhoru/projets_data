@@ -107,4 +107,4 @@ if __name__ == '__main__':
     register_page_2_callbacks(app)  # Register callbacks for Page 2
     register_page_3_callbacks(app, df_s_pg1, df_l_pg1)  # Register Page 3 callbacks
 
-    app.run_server(debug=True, dev_tools_ui=False, dev_tools_props_check=False)
+    app.run_server(debug=False, dev_tools_ui=False, dev_tools_props_check=False)

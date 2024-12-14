@@ -172,7 +172,7 @@ def render_page_1(theme: str, dataset: str, data) -> html.Div:
                     'height': '100%',
                 })
 
-            ], style={  'height': '700px',
+            ], style={  'height': '650px',
                         'width': '100%',
                         'display': 'flex', 
                         'justify-content': 'center', 
